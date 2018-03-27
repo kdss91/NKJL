@@ -26,3 +26,6 @@ local.properties
 
 data/**
 temp/**
+sort_temp/**
+loop_temp/**
+

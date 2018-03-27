@@ -4,20 +4,17 @@ import java.util.*;
 public class SortBased {
 
     public static void main(String[] args) {
-        File tempDir = new File("temp");
+        File tempDir = new File("sort_temp");
         tempDir.mkdir();
 
         Helper.relativeStart = Helper.start = Calendar.getInstance().getTimeInMillis();
         System.out.println("Started at: " + Calendar.getInstance().getTime());
 
-        if (args.length == 0 || args[0].equals("tpmms")) {
-            String temp = performSort();
-            System.out.println("calculating join...");
-            calculateBagJoin(temp.split(":")[0], temp.split(":")[1]);
-            Helper.printTime("Time for join", true);
-        } else {
-            System.out.println("Nested Loop technique not implemented yet");
-        }
+        String temp = performSort();
+        System.out.println("calculating join...");
+        calculateBagJoin(temp.split(":")[0], temp.split(":")[1]);
+        Helper.printTime("Time for join", true);
+
         Helper.printTime("Total time taken", false);
     }
 
@@ -91,7 +88,7 @@ public class SortBased {
 
                 List<BufferedReader> readers = new ArrayList<>();
                 for (int i = 0; i < size; i++) {
-                    File file = new File("temp/" + relation + "-sublist-" + (pass - 1) + "-" + ((run * Helper.bufferSize) + i));
+                    File file = new File("sort_temp/" + relation + "-sublist-" + (pass - 1) + "-" + ((run * Helper.bufferSize) + i));
                     BufferedReader reader = new BufferedReader(new FileReader(file));
                     getNextBlockFromReader(relation, reader, chunks, indices, i);
                     readers.add(reader);
@@ -163,8 +160,8 @@ public class SortBased {
 
     private static void calculateBagJoin(String p1, String p2) {
         try {
-            String file1 = "temp/" + Helper.RELATION1 + "-sublist-" + p1 + "-0";
-            String file2 = "temp/" + Helper.RELATION2 + "-sublist-" + p2 + "-0";
+            String file1 = "sort_temp/" + Helper.RELATION1 + "-sublist-" + p1 + "-0";
+            String file2 = "sort_temp/" + Helper.RELATION2 + "-sublist-" + p2 + "-0";
 
             BufferedReader reader1 = new BufferedReader(new FileReader(file1));
             Iterator<String> iterator1 = getBlockFromFile(reader1, Helper.RELATION1).iterator();
@@ -173,43 +170,14 @@ public class SortBased {
             Iterator<String> iterator2 = getBlockFromFile(reader2, Helper.RELATION2).iterator();
 
             List<String> output = new ArrayList<>();
-            List<String> gpas = new ArrayList<>();
 
             String[] a = null, b = null;
             boolean flagA = true;
             boolean flagB = true;
 
-            String sid = null;
-            int credits = 0;
-            double grades = 0.0;
-
             while (iterator1.hasNext() && iterator2.hasNext()) {
-                if (flagB) {
-                    b = iterator2.next().split("~>");
-                    if (a != null && a[0].substring(0, 8).compareTo(b[0].substring(0, 8)) < 0) {
-                        flagA = true;
-                    }
-
-                    //calculate GPA
-                    String bid = b[0].substring(0, 8);
-                    int c = Integer.valueOf(b[0].substring(21, 23).trim());
-                    double g = Double.valueOf(b[0].substring(23, 27).trim());
-                    if (sid == null) sid = bid;
-
-                    if (!sid.equals(bid)) {
-                        gpas.add(sid + String.format("%.2f", (double) (grades / credits)));
-                        if (gpas.size() == Helper.numOfTuplesPerOutput) {
-                            writeToFile(gpas, "temp/" + Helper.GPA);
-                        }
-                        sid = bid;
-                        credits = c;
-                        grades = (c * g);
-                    } else {
-                        credits += c;
-                        grades += (c * g);
-                    }
-                }
-                if (flagA) a = iterator1.next().split("~>");
+                if (flagB && iterator2.hasNext()) b = iterator2.next().split("~>");
+                if (flagA && iterator1.hasNext()) a = iterator1.next().split("~>");
 
                 if (a[0].substring(0, 8).compareTo(b[0].substring(0, 8)) < 0) {
                     flagA = true;
@@ -224,7 +192,7 @@ public class SortBased {
                     for (int i = 0; i < totalCount; i++) {
                         output.add(a[0] + b[0]);
                         if (output.size() == Helper.numOfTuplesPerOutput) {
-                            writeToFile(output, "temp/" + Helper.OUTPUT);
+                            writeToFile(output, "sort_temp/" + Helper.OUTPUT);
                         }
                     }
                 }
@@ -238,12 +206,8 @@ public class SortBased {
                 }
             }
 
-            if (!gpas.isEmpty()) {
-                writeToFile(gpas, "temp/" + Helper.GPA);
-            }
-
             if (!output.isEmpty()) {
-                writeToFile(output, "temp/" + Helper.OUTPUT);
+                writeToFile(output, "sort_temp/" + Helper.OUTPUT);
             }
         } catch (IOException e) {
             System.out.println("Error while calculating join.");
@@ -251,7 +215,6 @@ public class SortBased {
         }
 
     }
-
 
 
     private static List<String> getBlockFromFile(BufferedReader reader, String relation) throws IOException {
@@ -291,7 +254,7 @@ public class SortBased {
     }
 
     private static void writeToFile(List<String> output, String relation, int pass, int run) throws IOException {
-        writeToFile(output, "temp/" + relation + "-sublist-" + pass + "-" + run);
+        writeToFile(output, "sort_temp/" + relation + "-sublist-" + pass + "-" + run);
     }
 
     private static void writeToFile(List<String> output, String filePath) throws IOException {
