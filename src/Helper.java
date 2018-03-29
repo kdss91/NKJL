@@ -12,6 +12,7 @@ public class Helper {
     private static final int numOfTuplesPerBlockA = 40;
     private static final int numOfTuplesPerBlockB = 130;
     public static final int numOfTuplesPerOutput = 30;
+    public static final int numOfTuplesPerGpa = 130;
 
     private static final int numOfBytesPerTupleA = 330;
     private static final int numOfBytesPerTupleB = 135;
@@ -21,11 +22,13 @@ public class Helper {
 
     static long getAvailableMemory() {
         System.gc();
+        System.runFinalization();
         return Runtime.getRuntime().freeMemory();
     }
 
     static long getMaxMemory() {
         System.gc();
+        System.runFinalization();
         return Runtime.getRuntime().totalMemory();
     }
 
