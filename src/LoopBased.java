@@ -22,20 +22,22 @@ public class LoopBased {
             List<String> output = new ArrayList<>();
 
             BufferedReader reader1 = new BufferedReader(new FileReader(file1));
-            Iterator<String> iterator1 = getMaxBlocksFromFile(reader1, Helper.RELATION1).iterator();
+            Helper.calculateBufferSize(Helper.RELATION1);
+            Iterator<String> iterator1 = getBlocksFromFile(reader1, Helper.RELATION1, Helper.bufferSize - 100).iterator();
             String prevA = null;
             int countA = 0;
             while (iterator1.hasNext()) {
                 String a = iterator1.next();
-                if(prevA == null) prevA = a;
+                if (prevA == null) prevA = a;
                 if (a.equals(prevA)) {
                     countA++;
-                }else {
-                    System.out.println(prevA.substring(0,8) + " : " + countA);
+                } else {
+                    System.out.println(prevA.substring(0, 8) + " : " + countA);
                     BufferedReader reader2 = new BufferedReader(new FileReader(file2));
-                    Iterator<String> iterator2 = getBlockFromFile(reader2, Helper.RELATION2).iterator();
+                    Iterator<String> iterator2 = getBlocksFromFile(reader2, Helper.RELATION2, 1).iterator();
 
                     while (iterator2.hasNext()) {
+                        boolean flag = false;
                         String b = iterator2.next();
                         if (prevA.substring(0, 8).equals(b.substring(0, 8))) {
                             for (int i = 0; i < countA; i++) {
@@ -44,10 +46,12 @@ public class LoopBased {
                                     writeToFile(output, "loop_temp/" + Helper.OUTPUT);
                                 }
                             }
+                        } else if (prevA.substring(0, 8).compareTo(b.substring(0, 8)) < 0) {
+                            flag = true;
                         }
 
-                        if (!iterator2.hasNext()) {
-                            iterator2 = getBlockFromFile(reader2, Helper.RELATION2).iterator();
+                        if (!iterator2.hasNext() || flag) {
+                            iterator2 = getBlocksFromFile(reader2, Helper.RELATION2, 1).iterator();
                         }
                     }
 
@@ -57,7 +61,9 @@ public class LoopBased {
                 }
 
                 if (!iterator1.hasNext()) {
-                    iterator1 = getMaxBlocksFromFile(reader1, Helper.RELATION1).iterator();
+                    Helper.calculateBufferSize(Helper.RELATION1);
+                    iterator1 = getBlocksFromFile(reader1, Helper.RELATION1, Helper.bufferSize - 100).iterator();
+                    System.out.println("read next portion of relation 1");
                 }
             }
             if (!output.isEmpty()) {
@@ -69,26 +75,15 @@ public class LoopBased {
         }
     }
 
-    private static List<String> getMaxBlocksFromFile(BufferedReader reader, String relation) throws IOException {
-        Helper.calculateBufferSize(relation);
-        List<String> blocks = new ArrayList<>();
-        for (int i = 0; i < Helper.bufferSize - 3; i++) {
-            List<String> temp = getBlockFromFile(reader, relation);
-            if (temp.isEmpty()) break;
-            else blocks.addAll(temp);
-        }
-        Collections.sort(blocks);
-        return blocks;
-    }
-
-    private static List<String> getBlockFromFile(BufferedReader reader, String relation) throws IOException {
+    private static List<String> getBlocksFromFile(BufferedReader reader, String relation, int numOfBlocks) throws IOException {
         List<String> block = new ArrayList<>();
         String line;
-        for (int i = 0; i < Helper.getTuplesPerBlock(relation); i++) {
+        for (int i = 0; i < (numOfBlocks * Helper.getTuplesPerBlock(relation)); i++) {
             line = reader.readLine();
             if (line == null) break;
             block.add(line);
         }
+        Collections.sort(block);
         return block;
     }
 
