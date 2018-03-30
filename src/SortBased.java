@@ -98,23 +98,28 @@ public class SortBased {
 		int run = 0;
 		try {
 			Helper.calculateBufferSize(relation);
+//			Helper.bufferSize = 100;
 			for (;; ++run) {
+				System.out.println("run: " + run);
 				int size = Math.min(Helper.bufferSize, numOfRuns - (run * Helper.bufferSize));
 				List<List<String>> chunks = new ArrayList<>();
 				List<Integer> indices = new ArrayList<>();
+				List<Integer> blockNum = new ArrayList<>();
 				List<String> output = new ArrayList<>();
 
 				List<BufferedReader> readers = new ArrayList<>();
 				for (int i = 0; i < size; i++) {
+					System.out.println(
+							"sort_temp/" + relation + "-sublist-" + (pass - 1) + "-" + ((run * Helper.bufferSize) + i));
 					File file = new File(
 							"sort_temp/" + relation + "-sublist-" + (pass - 1) + "-" + ((run * Helper.bufferSize) + i));
 					BufferedReader reader = new BufferedReader(new FileReader(file));
-					getNextBlockFromReader(relation, reader, chunks, indices, i);
+					getNextBlockFromReader(relation, reader, chunks, indices, blockNum, i);
 					readers.add(reader);
 				}
 
 				String selection = null;
-				String prevSelection;
+				String prevSelection = null;
 				int selectionCount = 0;
 
 				while (true) {
@@ -129,7 +134,7 @@ public class SortBased {
 							}
 							flag = true;
 						} else {
-							if (getNextBlockFromReader(relation, readers.get(i), chunks, indices, i)) {
+							if (getNextBlockFromReader(relation, readers.get(i), chunks, indices, blockNum, i)) {
 								if (selection == null
 										|| selection.compareTo(chunks.get(i).get(indices.get(i)).split("~>")[0]) > 0) {
 									selection = chunks.get(i).get(indices.get(i)).split("~>")[0];
@@ -172,14 +177,6 @@ public class SortBased {
 					if (readers.get(i) != null)
 						readers.get(i).close();
 				}
-				readers.clear();
-				readers = null;
-				chunks.clear();
-				chunks = null;
-				indices.clear();
-				indices = null;
-				output.clear();
-				output = null;
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -306,11 +303,12 @@ public class SortBased {
 	}
 
 	private static boolean getNextBlockFromReader(String relation, BufferedReader reader, List<List<String>> chunks,
-			List<Integer> indices, int index) throws IOException {
+			List<Integer> indices, List<Integer> blockNum, int index) throws IOException {
 		boolean temp = false;
 
-		if (chunks.size() == index) {
+		if (blockNum.size() == index) {
 			indices.add(0);
+			blockNum.add(0);
 			chunks.add(new ArrayList<>());
 		} else {
 			chunks.get(index).clear();
@@ -327,6 +325,8 @@ public class SortBased {
 			temp = true;
 			indices.set(index, 0);
 		}
+
+		blockNum.set(index, blockNum.get(index) + 1);
 
 		return temp;
 	}
