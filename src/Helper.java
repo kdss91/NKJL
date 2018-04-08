@@ -14,8 +14,8 @@ public class Helper {
     public static final int numOfTuplesPerOutput = 30;
     public static final int numOfTuplesPerGpa = 130;
 
-    private static final int numOfBytesPerTupleA = 330;
-    private static final int numOfBytesPerTupleB = 135;
+    private static final int numOfBytesPerTupleA = 320;
+    private static final int numOfBytesPerTupleB = 130;
 
     public static int bufferSize = 0;
     public static long start = 0, relativeStart = 0;

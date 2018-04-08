@@ -2,7 +2,8 @@ import java.io.*;
 import java.util.*;
 
 public class LoopBased {
-
+	static int readIOCount = 0 ;
+	static int writeIOCount= 0 ;
     public static void main(String[] args) {
         File tempDir = new File("loop_temp");
         tempDir.mkdir();
@@ -11,6 +12,9 @@ public class LoopBased {
         System.out.println("Started at: " + Calendar.getInstance().getTime());
         System.out.println("calculating join...");
         calculateBagJoin();
+        System.out.println("Total readIOCount: "+readIOCount);
+        System.out.println("Total writeIOCount: "+writeIOCount);
+        System.out.println("Total IOCount: "+readIOCount+ writeIOCount);
         Helper.printTime("Total time taken", false);
     }
 
@@ -84,6 +88,7 @@ public class LoopBased {
             block.add(line);
         }
         Collections.sort(block);
+        readIOCount++;
         return block;
     }
 
@@ -93,6 +98,7 @@ public class LoopBased {
         for (String string : output) {
             writer.write(string + System.getProperty("line.separator"));
         }
+        writeIOCount++;
         writer.close();
         output.clear();
     }
