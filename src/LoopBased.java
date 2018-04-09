@@ -26,54 +26,89 @@ public class LoopBased {
             List<String> output = new ArrayList<>();
 
             BufferedReader reader1 = new BufferedReader(new FileReader(file1));
-            Helper.calculateBufferSize(Helper.RELATION1);
-            Iterator<String> iterator1 = getBlocksFromFile(reader1, Helper.RELATION1, Helper.bufferSize - 100).iterator();
-            String prevA = null;
-            int countA = 0;
-            while (iterator1.hasNext()) {
-                String a = iterator1.next();
-                if (prevA == null) prevA = a;
-                if (a.equals(prevA)) {
-                    countA++;
-                } else {
-                    System.out.println(prevA.substring(0, 8) + " : " + countA);
-                    BufferedReader reader2 = new BufferedReader(new FileReader(file2));
-                    Iterator<String> iterator2 = getBlocksFromFile(reader2, Helper.RELATION2, 1).iterator();
-
-                    while (iterator2.hasNext()) {
-                        boolean flag = false;
-                        String b = iterator2.next();
-                        if (prevA.substring(0, 8).equals(b.substring(0, 8))) {
-                            for (int i = 0; i < countA; i++) {
-                                output.add(prevA + b);
-                                if (output.size() == Helper.numOfTuplesPerOutput) {
-                                    writeToFile(output, "loop_temp/" + Helper.OUTPUT);
-                                }
-                            }
-                        } else if (prevA.substring(0, 8).compareTo(b.substring(0, 8)) < 0) {
-                            flag = true;
-                        }
-
-                        if (!iterator2.hasNext() || flag) {
-                            iterator2 = getBlocksFromFile(reader2, Helper.RELATION2, 1).iterator();
-                        }
+            
+            int tupleCount = 0;
+            
+            while(true) {
+            	Helper.calculateBufferSize(Helper.RELATION1);
+                List<String> list1 = getBlocksFromFile(reader1, Helper.RELATION1, Helper.bufferSize - 100);
+                if(list1.isEmpty()) break;
+        		Iterator<String> iterator1 = list1.iterator();
+        		System.out.println("new block rel1");
+        		
+            	BufferedReader reader2 = new BufferedReader(new FileReader(file2));
+            	List<String> list2 = getBlocksFromFile(reader2, Helper.RELATION2, 1);
+                Iterator<String> iterator2 = list2.iterator();
+                
+                boolean flagA = true;
+                boolean flagB = true;
+                boolean nextB = false;
+                
+                String a = null, b = null;
+                String lastB = list2.get(list2.size() - 1);
+                String lastA = list1.get(list1.size() - 1);
+                
+            	while(iterator2.hasNext() || !flagB) {
+            		if (flagB) {
+                        if (iterator2.hasNext()) {
+                        	b = iterator2.next();
+                        	if(lastA.substring(0, 8).compareTo(b.substring(0,8)) < 0) {
+                        		nextB = true;
+                        	}
+                        } else b = null;
                     }
-
-                    reader2.close();
-                    prevA = a;
-                    countA = 1;
-                }
-
-                if (!iterator1.hasNext()) {
-                    Helper.calculateBufferSize(Helper.RELATION1);
-                    iterator1 = getBlocksFromFile(reader1, Helper.RELATION1, Helper.bufferSize - 100).iterator();
-                    System.out.println("read next portion of relation 1");
-                }
+                    if (flagA) {
+                        if (iterator1.hasNext()) a = iterator1.next();
+                        else a = null;
+                    }
+                    
+                    if (a != null && b != null) {
+                        if (a.substring(0, 8).compareTo(b.substring(0, 8)) < 0) {
+                            flagA = true;
+                            flagB = false;
+                        } else if (a.substring(0, 8).compareTo(b.substring(0, 8)) > 0) {
+                            flagA = false;
+                            flagB = true;
+                            if(a.substring(0, 8).compareTo(lastB.substring(0, 8)) > 0) {
+                            	nextB = true;
+                            }
+                        } else {
+                            flagB = true;
+                            flagA = false;
+                            tupleCount++;
+                            output.add(a + b.substring(8, b.length()));
+                            if (output.size() == Helper.numOfTuplesPerOutput) {
+                                writeToFile(output, "loop_temp/" + Helper.OUTPUT);
+                            }
+                        }
+                    } else if (b != null) {
+                        flagB = true;
+                    } else if (a != null) {
+                        flagA = true;
+                    }
+                    
+                    if ((flagB && !iterator2.hasNext()) || (flagA && !iterator1.hasNext()) || nextB) {
+                    	list2.clear();
+                    	list2 = getBlocksFromFile(reader2, Helper.RELATION2, 1);
+                        iterator2 = list2.iterator();
+                        if(list2.isEmpty()) lastB = null; 
+                        else lastB = list2.get(list2.size() - 1);
+                        
+                        iterator1 = list1.iterator();
+                        flagA = true;
+                        flagB = true;
+                        nextB = false;
+                    }
+            	}
+            	
+            	reader2.close();
+            	reader2 = null;
             }
             if (!output.isEmpty()) {
                 writeToFile(output, "loop_temp/" + Helper.OUTPUT);
             }
 
+            System.out.println("total NumberOf tuples: " + tupleCount);	
         } catch (Exception e) {
             e.printStackTrace();
         }

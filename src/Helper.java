@@ -2,8 +2,8 @@ import java.util.Calendar;
 
 public class Helper {
 
-    public static final String RELATION1 = "bag1_";
-    public static final String RELATION2 = "bag2_";
+    public static final String RELATION1 = "bag1";
+    public static final String RELATION2 = "bag2";
     public static final String OUTPUT = "join";
     public static final String GPA = "gpa";
 
