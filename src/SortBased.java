@@ -4,8 +4,11 @@ import java.util.*;
 public class SortBased {
 
     static Map<String, Double> gradeMap = new HashMap<>();
-    static int readIOCount =0;
-    static int writeIOCount =0;
+
+    static int blockReads1 = 0, blockWrites1 = 0;
+    static int blockReads2 = 0, blockWrites2 = 0;
+    static int blockWritesGpa = 0, blockWritesJoin = 0;
+
     public static void main(String[] args) {
 
         gradeMap.put("A+", 4.3);
@@ -30,13 +33,19 @@ public class SortBased {
         String temp = performSort();
         System.out.println("calculating join...");
         calculateBagJoin(temp.split(":")[0], temp.split(":")[1]);
-        System.out.println("Total readIOCount: "+readIOCount);
-        System.out.println("Total writeIOCount: "+writeIOCount);
-        int totalIOCount = (readIOCount+ writeIOCount);
-        System.out.println("Total IOCount: "+totalIOCount);
         Helper.printTime("Time for join", true);
 
         Helper.printTime("Total time taken", false);
+
+        System.out.println("Total block reads for relation1: " + blockReads1);
+        System.out.println("Total block writes for relation1: " + blockWrites1);
+        System.out.println("Total block reads for relation2: " + blockReads2);
+        System.out.println("Total block writes for relation2: " + blockWrites2);
+        System.out.println("Total block writes for join: " + blockWritesJoin);
+        System.out.println("Total block writes for gpa: " + blockWritesGpa);
+
+        System.out.println("Total disk IOs: " + (blockReads1 + blockWrites1 + blockReads2 + blockWrites2));
+        System.out.println("Total disk IOs with join and GPA: " + (blockReads1 + blockWrites1 + blockReads2 + blockWrites2 + blockWritesGpa + blockWritesJoin));
     }
 
     private static String performSort() {
@@ -71,24 +80,26 @@ public class SortBased {
             String line;
             int numOfRuns = 0;
             for (int i = 0; (line = reader.readLine()) != null; i++) {
+                if(i % Helper.getTuplesPerBlock(relation) == 0) {
+                    if(relation.equals(Helper.RELATION1)) blockReads1++;
+                    else blockReads2++;
+                }
+
                 tuples.add(line + "~>1");
                 if (i == (Helper.getTuplesPerBlock(relation) * Helper.bufferSize) - 1) {
-                	readIOCount +=Helper.bufferSize;
                     quickSort(tuples, 0, tuples.size() - 1);
                     i = -1;
 
                     writeToFile(tuples, relation, 0, numOfRuns);
-                    writeIOCount +=Helper.bufferSize;
+
                     numOfRuns++;
                 }
             }
 
             if (!tuples.isEmpty()) {
                 // Collections.sort(tuples);
-            	readIOCount += Math.ceil(tuples.size()/Helper.getTuplesPerBlock(relation));
                 quickSort(tuples, 0, tuples.size() - 1);
                 writeToFile(tuples, relation, 0, numOfRuns);
-                writeIOCount+=Math.ceil(tuples.size()/Helper.getTuplesPerBlock(relation));
                 numOfRuns++;
             }
 
@@ -107,9 +118,8 @@ public class SortBased {
         int run = 0;
         try {
             Helper.calculateBufferSize(relation);
-           Helper.bufferSize = 50; 
+            Helper.bufferSize = 50;
             for (;; ++run) {
-//				System.out.println("run: " + run);
                 int size = Math.min(Helper.bufferSize, numOfRuns - (run * Helper.bufferSize));
                 List<List<String>> chunks = new ArrayList<>();
                 List<Integer> indices = new ArrayList<>();
@@ -118,7 +128,6 @@ public class SortBased {
 
                 List<BufferedReader> readers = new ArrayList<>();
                 for (int i = 0; i < size; i++) {
-//                    System.out.println("sort_temp/" + relation + "-sublist-" + (pass - 1) + "-" + ((run * Helper.bufferSize) + i));
                     File file = new File(
                             "sort_temp/" + relation + "-sublist-" + (pass - 1) + "-" + ((run * Helper.bufferSize) + i));
                     BufferedReader reader = new BufferedReader(new FileReader(file));
@@ -157,7 +166,6 @@ public class SortBased {
                         selectionCount = 0;
                         if (output.size() == Helper.numOfTuplesPerOutput) {
                             writeToFile(output, relation, pass, run);
-                            writeIOCount++;
                         }
                     }
 
@@ -172,7 +180,6 @@ public class SortBased {
 
                     if (!flag) {
                         if (!output.isEmpty()) {
-                        	writeIOCount += Math.ceil(output.size()/Helper.numOfTuplesPerOutput);
                             writeToFile(output, relation, pass, run);
                         }
                         break;
@@ -232,8 +239,8 @@ public class SortBased {
                                 double temp = grades / credits;
                                 gpa.add(b[0].substring(0, 8) + " " + String.format("%.2f", temp));
                                 if (gpa.size() == Helper.numOfTuplesPerGpa) {
-                                	writeIOCount++;
                                     writeToFile(gpa, "sort_temp/" + Helper.GPA);
+                                    blockWritesGpa++;
                                 }
                             }
 
@@ -269,8 +276,8 @@ public class SortBased {
                         rowCount += totalCount;
                         output.add(a[0] + b[0].substring(8, b[0].length()) + "~>" + totalCount);
                         if (output.size() == Helper.numOfTuplesPerOutput) {
-                        	writeIOCount++;
                             writeToFile(output, "sort_temp/" + Helper.OUTPUT);
+                            blockWritesJoin++;
                         }
                     }
                 } else if (b != null) {
@@ -289,11 +296,11 @@ public class SortBased {
             }
 
             if (!output.isEmpty()) {
-            	writeIOCount++;
+                blockWritesJoin++;
                 writeToFile(output, "sort_temp/" + Helper.OUTPUT);
             }
             if (!gpa.isEmpty()) {
-            	writeIOCount++;
+                blockWritesGpa++;
                 writeToFile(gpa, "sort_temp/" + Helper.GPA);
             }
         } catch (IOException e) {
@@ -301,10 +308,12 @@ public class SortBased {
             e.printStackTrace();
         }
         System.out.println("Total number of tuples in join result: " + rowCount);
-        
+
     }
 
     private static List<String> getBlockFromFile(BufferedReader reader, String relation) throws IOException {
+        if(relation.equals(Helper.RELATION1)) blockReads1++;
+        else blockReads2++;
         List<String> output = new ArrayList<>();
         String line;
         for (int i = 0; i < Helper.getTuplesPerBlock(relation); i++) {
@@ -313,18 +322,19 @@ public class SortBased {
                 break;
             output.add(line);
         }
-        readIOCount++;
         return output;
     }
 
     private static boolean getNextBlockFromReader(String relation, BufferedReader reader, List<List<String>> chunks,
                                                   List<Integer> indices, List<Integer> blockNum, int index) throws IOException {
         boolean temp = false;
+        if(relation.equals(Helper.RELATION1)) blockReads1++;
+        else blockReads2++;
 
         if (blockNum.size() == index) {
             indices.add(0);
             blockNum.add(0);
-            chunks.add(new ArrayList());
+            chunks.add(new ArrayList<>());
         } else {
             chunks.get(index).clear();
         }
@@ -342,11 +352,16 @@ public class SortBased {
         }
 
         blockNum.set(index, blockNum.get(index) + 1);
-        readIOCount++;
+
         return temp;
     }
 
     private static void writeToFile(List<String> output, String relation, int pass, int run) throws IOException {
+        int count = output.size() / Helper.getTuplesPerBlock(relation);
+        if(count == 0) count = 1;
+        if(relation.equals(Helper.RELATION1)) blockWrites1 += count;
+        else blockWrites2 += count;
+
         writeToFile(output, "sort_temp/" + relation + "-sublist-" + pass + "-" + run);
     }
 
